@@ -1,0 +1,66 @@
+
+
+<div class="container-fluid text-center"
+
+<div class="row">
+<div class="col"><span class="display-4">Bitcoin (BTC/USD)</span></div>
+</div>
+</div>
+
+<div class="row">
+<div class="col-sm-1">&nbsp;</div>
+<div class="col-sm-6">
+
+
+<table border="1">
+  <thead>
+    <th style="padding-left: 10px; padding-right: 10px">Index</th>
+    <th style="padding-left: 10px; padding-right: 10px">Day</th>
+    <th style="padding-left: 10px; padding-right: 10px">Closing Price</th>
+    <th style="padding-left: 10px; padding-right: 10px">Price Change</th>
+    <th style="padding-left: 10px; padding-right: 10px">Volume</th></thead>
+  <tbody>
+<%
+  @price_data.each do |data|
+    color_str = "#fadbd8"
+    if data.price_delta > 0
+      color_str = "#d5f5e3"
+    end
+    row_background = "style=\"background-color: #{color_str}\""
+%>
+  <tr <%=raw(row_background) %> >
+    <td><%= data.index %></td>  
+    <td style="padding-left: 10px; padding-right: 10px"><%= data.day %></td>
+    <td style="padding-left: 10px; padding-right: 10px"><%= data.close.round %></td>
+    <td style="padding-left: 10px; padding-right: 10px"><%= data.price_delta %></td>
+    <td style="padding-left: 10px; padding-right: 10px; text-align: right"><%= number_with_delimiter(data.volume.round, :delimiter => ',') %></td>
+  </tr>
+<%
+  end
+%>
+  <tr><td colspan="5" style="text-align: center; font-style: bold">Price Prediction</td></tr>
+  <tr>
+    <td>&nbsp;</td>  
+    <td style="padding-left: 10px; padding-right: 10px"><%= @prediction_day %></td>
+    <td style="padding-left: 10px; padding-right: 10px; font-style: bold"><%= @predicted_price.round %></td>
+    <td style="padding-left: 10px; padding-right: 10px"><%= @scaled_output.round %></td>
+    <td style="padding-left: 10px; padding-right: 10px">TBD</td>
+  </tr>
+  </tbody>
+</table>
+
+<br/><br/>
+
+<span style="font-style: italic">Disclaimer: The information on this page does not constitute financial advice.</span>
+
+</div>
+
+<div class="col-sm-4">
+Current BTC price (15m delay)<br>
+<%= @current_time %><br>
+$ <%= @current_btc_price %>
+</div>
+
+<div class="col-sm-1">&nbsp;</div>
+</div>
+</div>
