@@ -1,0 +1,11 @@
+<h1>Save new data</h1>
+
+<br/>
+The most recent day in the database is <%= @most_recent_day %>
+<%= form_for @new_data, url: '/crypto/savedata' do |f| %>
+  Day <%= f.text_field :day, :input_html => { :value => '2022-07-19' } %><br/>
+  Price <%= f.text_field :price %><br/>
+  Volume <%= f.text_field :volume %><br/>
+  <%= f.submit "Save" %>
+<% end %>
+

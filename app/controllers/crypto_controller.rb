@@ -12,6 +12,29 @@ class CryptoController < ApplicationController
     @data_count = CryptoData.count
   end 
 
+  def enterdata
+    @new_data = CryptoData.new
+    @most_recent_day = CryptoData.maximum(:day)
+  end
+
+  def savedata
+    puts "In controller savedata"
+    new_data = CryptoData.new(params.require(:crypto_data).permit(:day, :price, :volume))
+    puts new_data.inspect
+    # Get the price from yesterday to calculate the delta
+    yesterday = Date.parse(new_data.day) - 1
+    puts "Yesterday was #{yesterday}"
+    yesterday_str = yesterday.strftime("%Y-%m-%d")
+    puts "Yesterday_Str was #{yesterday_str}"
+    yesterday_price_data = CryptoData.where("day = '#{yesterday_str}'")
+    puts "Found #{yesterday_price_data.size} results"
+    yesterday_price_data.each do |ypd|
+      puts "The yesterday price data is #{ypd.day} -> #{ypd.price}"
+      new_data.price_delta = new_data.price - ypd.price
+    end
+    new_data.save
+  end
+
   def deleteruns 
     CryptoPrediction.delete_all
   end
@@ -106,6 +129,17 @@ class CryptoController < ApplicationController
     @train_config.price = 12
   end
 
+  def make_prediction(fann, metrics, i, price_data)
+    input = create_input_set_for_index(@price_data, i, 10, metrics)
+    output = fann.run(input)
+    scaled_output = CryptoCommon.transform_output(output, metrics)
+
+    # Convert the predicted percentage change to a daily price
+    day_before_price = price_data[i + 9].price
+    predicted_price = day_before_price + (scaled_output * day_before_price)
+    predicted_price
+  end 
+
   def testrun
     puts "In crypto controller testrun"
     @train_config = CryptoData.new(params.require(:crypto_data).permit(:volume, :price))
@@ -119,20 +153,14 @@ class CryptoController < ApplicationController
     number_to_process = @train_config.price.to_i 
     end_index = start_index + number_to_process - 1
 
-    testrun_id = rand(100)
+    testrun_id = rand(10000)
     puts "Start testing at #{start_index}, run id #{testrun_id}"
 
     debug = false
     (start_index..end_index).each do |i|
-      input = create_input_set_for_index(@price_data, i, 10, metrics)
-      output = fann.run(input)
-      scaled_output = CryptoCommon.transform_output(output, metrics)
-
-      # Convert the predicted percentage change to a daily price
-      day_before_price = @price_data[i + 9].price
-      predicted_price = day_before_price + (scaled_output * day_before_price)
+      predicted_price = make_prediction(fann, metrics, i, @price_data)
       actual_price_data = @price_data[i + 10]
-      actual_price = actual_price_data.price
+      actual_price = actual_price_data.price  
 
       if debug
         puts "Predict Input: #{input.join(', ')}"
@@ -278,38 +306,24 @@ class CryptoController < ApplicationController
     puts "In crypto controller predict"
 
     fann, metrics = load_the_model 
+    @price_data = get_price_data_from_database
 
-    @context = ModelContext.new
-    load_data_in_context("./storage/new_BTC_updated.csv", @context)
-    @context.calc_metrics
-
-    end_index = @context.day_array.size - 1
-    # indexes are inclusive, so subtract 8 to get a range of 10
+    end_index = @price_data.last.index
+    # indexes are inclusive, so subtract 9 to get a range of 10
     start_index = end_index - 9
-    @last_day = @context.day_array[end_index]
+    @last_day = @price_data.last.day
     @prediction_day = Date.parse(@last_day) + 1
 
-    @price_data = []
+    @historical_data = []
     (start_index..end_index).each do |index|
-      @price_data << CryptoClosingPrice.new(index,
-                                            @context.day_array[index],
-                                            @context.close_array[index],
-                                            @context.volume_array[index],
-                                            @context.close_delta_array[index].round)
+      @historical_data << CryptoClosingPrice.new(index,
+                                                 @price_data[index].day,
+                                                 @price_data[index].price,
+                                                 @price_data[index].volume,
+                                                 @price_data[index].price_delta.round)
     end
 
-    # Predict the price
-    input_subset = @context.close_delta_array[start_index..end_index]
-    puts "Input subset: #{input_subset.join(', ')}"
-    scaled_input = CryptoCommon::scale_array(input_subset, metrics)
-    puts "Scaled input: #{scaled_input.join(', ')}"
-
-    output = fann.run(scaled_input)
-    puts "Output:       #{output.join(', ')}"
-    @scaled_output = CryptoCommon::transform_output(output, metrics)
-    puts "Scale Output: #{@scaled_output}"
-    @predicted_price = @price_data.last.close + @scaled_output
-
+    @predicted_price = make_prediction(fann, metrics, start_index, @price_data)
     @current_time = Time.now.utc 
     @current_btc_price = CryptoCommon::get_current_btc_in_usc
   end

@@ -21,7 +21,7 @@
     <th style="padding-left: 10px; padding-right: 10px">Volume</th></thead>
   <tbody>
 <%
-  @price_data.each do |data|
+  @historical_data.each do |data|
     color_str = "#fadbd8"
     if data.price_delta > 0
       color_str = "#d5f5e3"
@@ -43,7 +43,7 @@
     <td>&nbsp;</td>  
     <td style="padding-left: 10px; padding-right: 10px"><%= @prediction_day %></td>
     <td style="padding-left: 10px; padding-right: 10px; font-style: bold"><%= @predicted_price.round %></td>
-    <td style="padding-left: 10px; padding-right: 10px"><%= @scaled_output.round %></td>
+    <td style="padding-left: 10px; padding-right: 10px">&nbsp;</td>
     <td style="padding-left: 10px; padding-right: 10px">TBD</td>
   </tr>
   </tbody>
