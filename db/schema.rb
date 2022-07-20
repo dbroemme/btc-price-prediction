@@ -10,12 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2022_07_18_000000) do
-  create_table "crypto", force: :cascade do |t|
+ActiveRecord::Schema[7.0].define(version: 2022_07_18_010000) do
+  create_table "crypto_data", force: :cascade do |t|
     t.string "day"
-    t.float "close_price"
+    t.float "price"
     t.float "price_delta"
     t.integer "volume"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "crypto_predictions", force: :cascade do |t|
+    t.integer "run_id"
+    t.string "day"
+    t.float "price"
+    t.float "actual_price"
+    t.float "error_amount"
+    t.float "error_pct"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end

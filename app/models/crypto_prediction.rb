@@ -1,0 +1,2 @@
+class CryptoPrediction < ApplicationRecord
+end

@@ -2,7 +2,6 @@ require 'yaml'
 require 'json'
 
 module CryptoCommon
-  TRAIN_CUTOFF = 1590
 
   def CryptoCommon.get_current_btc_in_usc
     uri = URI("https://blockchain.info/ticker")
@@ -20,9 +19,8 @@ module CryptoCommon
   end
 
   def CryptoCommon.scale_with_metrics(val, metrics)
-    range = metrics.max - metrics.min
     val_from_bottom = val - metrics.min 
-    val_from_bottom / range
+    val_from_bottom.to_f / metrics.range.to_f
   end 
 
   # This will scale from zero to one
@@ -35,8 +33,7 @@ module CryptoCommon
   end
 
   def CryptoCommon.scale_out_with_metrics(value, metrics)
-    range = metrics.max - metrics.min
-    point_in_range = range * value
+    point_in_range = metrics.range * value
     metrics.min + point_in_range
   end
 
@@ -51,36 +48,41 @@ module CryptoCommon
     attr_accessor :avg
     attr_accessor :med
     attr_accessor :sum
+    attr_accessor :range
 
     def initialize 
       @cnt = 0
-      @min = nil 
-      @max = nil 
+      @min = 100000.0
+      @max = -100000.0
       @avg = 0.0 
       @med = nil 
       @sum = 0.0 
+      @range = 0.0
     end 
 
-    def to_display_round
-      "Metrics cnt: #{cnt}    min: #{min.round(5)}  max: #{max.round(5)}  avg: #{avg.round(5)}  med: #{med.round(5)}  sum: #{sum.round(5)}"
+    def calc_range 
+      @range = @max - @min
     end
 
     def to_display 
-      "Metrics cnt: #{cnt}    min: #{min}  max: #{max}  avg: #{avg}  med: #{med}  sum: #{sum}"
+      "Metrics cnt: #{@cnt}  min: #{@min}  max: #{@max}  avg: #{@avg}  med: #{@med}  sum: #{@sum}  range: #{@range}"
     end
   end
 
   class CryptoClosingPrice
     attr_accessor :index
     attr_accessor :day
-    attr_accessor :close
+    attr_accessor :price
     attr_accessor :volume
     attr_accessor :price_delta
 
-    def initialize(i, d, c, v, delta)
+    attr_accessor :price_delta_pct
+    attr_accessor :price_delta_scaled
+
+    def initialize(i, d, price, v, delta)
       @index = i
       @day = d 
-      @close = c 
+      @price = price
       @volume = v 
       @price_delta = delta
     end 
@@ -286,53 +288,6 @@ module CryptoCommon
       context.volume_array << vol
     
       temp_count = temp_count + 1
-    end
-  end
-
-  def get_number_of_inputs(n)
-    n
-  end
-
-  def get_result_offset
-    0
-  end 
-
-  def create_input_set_for_index(context, index, n)
-    input_subset = context.close_delta_array[index..index + n - 1]
-    scale_array(input_subset, context.close_metrics)
-  end 
-    
-  def get_desired_output_for_index(context, index, n)
-    # TODO we want the scaled delta from index + n - 1  to   index + n + get_result_offset
-    delta = context.close_array[index + n + get_result_offset] - context.close_array[index + n - 1] 
-    scale_with_metrics(delta, context.close_metrics)
-  end 
-    
-  def get_actual_output_for_index(context, index, n)
-    context.close_array[index + n + get_result_offset]
-  end
-
-  def test(start_index, n, fann, context)
-    result_index = start_index + n + get_result_offset
-    input = create_input_set_for_index(context, start_index, n)
-    output = fann.run(input)
-    scaled_output = transform_output(output, context)
-
-    context.predictions_raw[result_index] = output[0]
-    context.predictions_scaled[result_index] = scaled_output
-    predicted_price = context.close_array[start_index + n - 1] + scaled_output
-    context.predictions_price[result_index] = predicted_price
-
-    actual_output = get_actual_output_for_index(context, start_index, n)
-    diff = predicted_price - actual_output
-    context.predictions_price_error[result_index] = diff
-    context.predictions_price_error_pct[result_index] = diff / actual_output
-    #puts "Test #{start_index}  #{context.day_array[start_index]} #{input.join(', ')}  ->  #{scaled_output}    actual: #{actual_output}   #{diff.round(4)}"
-  end
-
-  def exercise_the_model(fann, n, context)
-    (TRAIN_CUTOFF..context.number_of_data_points - n - 1 - get_result_offset).each do |i|
-      test(i, n, fann, context)
     end
   end
 
