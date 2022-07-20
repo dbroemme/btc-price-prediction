@@ -96,4 +96,53 @@ module CryptoCommon
       @price_delta = delta
     end 
   end 
+
+  class SevenDayPricePredict 
+    attr_accessor :number_of_inputs 
+    attr_accessor :hidden_layers 
+    attr_accessor :network_filename
+
+    def initialize
+      @number_of_inputs = 7
+      @hidden_layers = [12] 
+      @network_filename = "./storage/btc_seven.net"
+    end
+  end
+
+  class TenDayPricePredict 
+    attr_accessor :number_of_inputs 
+    attr_accessor :hidden_layers 
+    attr_accessor :network_filename
+
+    def initialize
+      @number_of_inputs = 10
+      @hidden_layers = [16] 
+      @network_filename = "./storage/btc_three.net"
+    end
+  end
+
+  class TwentyDayPricePredict 
+    attr_accessor :number_of_inputs 
+    attr_accessor :hidden_layers 
+    attr_accessor :network_filename
+
+    def initialize
+      @number_of_inputs = 20
+      @hidden_layers = [32,16] 
+      @network_filename = "./storage/btc_twenty.net"
+    end
+  end
+
+  class ThirtyDayPricePredict 
+    attr_accessor :number_of_inputs 
+    attr_accessor :hidden_layers 
+    attr_accessor :network_filename
+
+    def initialize
+      @number_of_inputs = 30
+      @hidden_layers = [24,16] 
+      @network_filename = "./storage/btc_thirty.net"
+    end
+  end
+
 end

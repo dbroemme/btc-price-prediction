@@ -1,9 +1,6 @@
 require 'crypto_common'
 require 'json'
 
-NUMBER_OF_INPUTS = 10
-HIDDEN_LAYERS = [64]
-NETWORK_FILENAME = "./storage/btc_three_layers.net"
 METRICS_FILE_NAME = "./storage/context_metrics.txt"
 
 class CryptoController < ApplicationController
@@ -13,8 +10,15 @@ class CryptoController < ApplicationController
     puts "In crypto controller index"
   end
 
+  def get_model_config
+    #TenDayPricePredict.new
+    #TwentyDayPricePredict.new
+    SevenDayPricePredict.new
+  end 
+
   def setup
     @train_config = CryptoData.new
+    @train_config.volume = 2500
     @data_count = CryptoData.count
   end 
 
@@ -80,6 +84,8 @@ class CryptoController < ApplicationController
   end 
 
   def train
+    model_config = get_model_config
+
     puts "In crypto controller train"
     @train_config = CryptoData.new(params.require(:crypto_data).permit(:volume))
     puts @train_config.inspect
@@ -96,23 +102,23 @@ class CryptoController < ApplicationController
     @desired_output_array = []
 
     (0..training_index_cutoff).each do |train_index|
-      input = create_input_set_for_index(@price_data, train_index, NUMBER_OF_INPUTS, metrics)
-      desired_output = get_desired_output_for_index(@price_data, train_index, NUMBER_OF_INPUTS, metrics)
-      puts "Input:  #{input}  ->  #{desired_output}"
+      input = create_input_set_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
+      desired_output = get_desired_output_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
+      #puts "Input:  #{input}  ->  #{desired_output}"
       @input_array << input 
       @desired_output_array << [desired_output]
     end
 
     train = RubyFann::TrainData.new(:inputs => @input_array,
                                     :desired_outputs => @desired_output_array)
-    fann = RubyFann::Standard.new(:num_inputs => NUMBER_OF_INPUTS, 
-                                  :hidden_neurons => HIDDEN_LAYERS,
+    fann = RubyFann::Standard.new(:num_inputs => model_config.number_of_inputs, 
+                                  :hidden_neurons => model_config.hidden_layers,
                                   :num_outputs => 1)
-    #5100 max_epochs, 20 errors between reports and 0.003 desired MSE (mean-squared-error)
-    fann.train_on_data(train, 500, 20, 0.003)
+    #5100 max_epochs, 20 errors between reports and 0.001 desired MSE (mean-squared-error)
+    fann.train_on_data(train, 500, 20, 0.001)
 
-    File.delete(NETWORK_FILENAME) if File.exist? NETWORK_FILENAME
-    fann.save(NETWORK_FILENAME)
+    File.delete(model_config.network_filename) if File.exist? model_config.network_filename
+    fann.save(model_config.network_filename)
     @network_trained = true
 
     redirect_to action: "test"
@@ -120,7 +126,7 @@ class CryptoController < ApplicationController
 
   def create_input_set_for_index(price_data_array, index, n, metrics)
     input = []
-    puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
+    #puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
     price_data_array[index..index+n-1].each do |pd|
       input << pd.price_delta_pct
     end
@@ -130,18 +136,20 @@ class CryptoController < ApplicationController
   def get_desired_output_for_index(price_data_array, index, n, metrics)
     delta = price_data_array[index + n].price - price_data_array[index + n - 1].price 
     delta_pct = delta.to_f / price_data_array[index + n].price
-    puts "Delta: #{delta}  Pct: #{delta_pct}"
+    #puts "Delta: #{delta}  Pct: #{delta_pct}"
     CryptoCommon::scale_with_metrics(delta_pct, metrics)
   end 
 
   def test
     @train_config = CryptoData.new
-    @train_config.volume = 11
-    @train_config.price = 12
+    @train_config.volume = 2501
+    @train_config.price = 100
   end
 
   def make_prediction(fann, metrics, i, price_data)
-    input = create_input_set_for_index(price_data, i, NUMBER_OF_INPUTS, metrics)
+    model_config = get_model_config
+
+    input = create_input_set_for_index(price_data, i, model_config.number_of_inputs, metrics)
     output = fann.run(input)
     scaled_output = CryptoCommon.transform_output(output, metrics)
 
@@ -153,6 +161,8 @@ class CryptoController < ApplicationController
 
   def testrun
     puts "In crypto controller testrun"
+    model_config = get_model_config
+
     @train_config = CryptoData.new(params.require(:crypto_data).permit(:volume, :price))
     puts @train_config.inspect
 
@@ -170,7 +180,7 @@ class CryptoController < ApplicationController
     debug = false
     (start_index..end_index).each do |i|
       predicted_price = make_prediction(fann, metrics, i, @price_data)
-      actual_price_data = @price_data[i + NUMBER_OF_INPUTS]
+      actual_price_data = @price_data[i + model_config.number_of_inputs]
       actual_price = actual_price_data.price  
 
       if debug
@@ -307,7 +317,8 @@ class CryptoController < ApplicationController
   end
 
   def load_the_model
-    fann = RubyFann::Standard.new(:filename => NETWORK_FILENAME)
+    model_config = get_model_config
+    fann = RubyFann::Standard.new(:filename => model_config.network_filename)
     persisted_metrics = File.read(METRICS_FILE_NAME)
     metrics = YAML::load(persisted_metrics)
     [fann, metrics]
@@ -315,12 +326,12 @@ class CryptoController < ApplicationController
 
   def predict
     puts "In crypto controller predict"
-
+    model_config = get_model_config
     fann, metrics = load_the_model 
     @price_data = get_price_data_from_database
 
     end_index = @price_data.last.index
-    start_index = end_index - NUMBER_OF_INPUTS - 1
+    start_index = end_index - model_config.number_of_inputs - 1
     @last_day = @price_data.last.day
     @prediction_day = Date.parse(@last_day) + 1
 
@@ -340,12 +351,12 @@ class CryptoController < ApplicationController
 
   def predict_api
     puts "In crypto controller predict api"
-
+    model_config = get_model_config
     fann, metrics = load_the_model 
     price_data = get_price_data_from_database
 
     end_index = price_data.last.index
-    start_index = end_index - NUMBER_OF_INPUTS - 1
+    start_index = end_index - model_config.number_of_inputs - 1
     last_day = price_data.last.day
     prediction_day = Date.parse(last_day) + 1
 
