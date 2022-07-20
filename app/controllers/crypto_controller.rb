@@ -1,5 +1,10 @@
 require 'crypto_common'
 
+NUMBER_OF_INPUTS = 10
+HIDDEN_LAYERS = [32]
+NETWORK_FILENAME = "./storage/btc.net"
+METRICS_FILE_NAME = "./storage/context_metrics.txt"
+
 class CryptoController < ApplicationController
   include CryptoCommon
 
@@ -15,6 +20,10 @@ class CryptoController < ApplicationController
   def enterdata
     @new_data = CryptoData.new
     @most_recent_day = CryptoData.maximum(:day)
+  end
+
+  def priceupdate 
+    PriceUpdateJob.perform_later
   end
 
   def savedata
@@ -78,7 +87,7 @@ class CryptoController < ApplicationController
     training_index_cutoff = @train_config.volume
 
     @price_data = get_price_data_from_database
-    persisted_metrics = File.read("./storage/context_metrics.txt")
+    persisted_metrics = File.read(METRICS_FILE_NAME)
     metrics = YAML::load(persisted_metrics)
 
     # Each of these is an array of arrays
@@ -86,8 +95,8 @@ class CryptoController < ApplicationController
     @desired_output_array = []
 
     (0..training_index_cutoff).each do |train_index|
-      input = create_input_set_for_index(@price_data, train_index, 10, metrics)
-      desired_output = get_desired_output_for_index(@price_data, train_index, 10, metrics)
+      input = create_input_set_for_index(@price_data, train_index, NUMBER_OF_INPUTS, metrics)
+      desired_output = get_desired_output_for_index(@price_data, train_index, NUMBER_OF_INPUTS, metrics)
       puts "Input:  #{input}  ->  #{desired_output}"
       @input_array << input 
       @desired_output_array << [desired_output]
@@ -95,14 +104,14 @@ class CryptoController < ApplicationController
 
     train = RubyFann::TrainData.new(:inputs => @input_array,
                                     :desired_outputs => @desired_output_array)
-    fann = RubyFann::Standard.new(:num_inputs => 10, 
-                                  :hidden_neurons => [32],
+    fann = RubyFann::Standard.new(:num_inputs => NUMBER_OF_INPUTS, 
+                                  :hidden_neurons => HIDDEN_LAYERS,
                                   :num_outputs => 1)
-    # 100 max_epochs, 20 errors between reports and 0.001 desired MSE (mean-squared-error)
+    #5100 max_epochs, 20 errors between reports and 0.003 desired MSE (mean-squared-error)
     fann.train_on_data(train, 500, 20, 0.003)
 
-    File.delete("./storage/btc.net") if File.exist? "./storage/btc.net"
-    fann.save("./storage/btc.net")
+    File.delete(NETWORK_FILENAME) if File.exist? NETWORK_FILENAME
+    fann.save(NETWORK_FILENAME)
     @network_trained = true
 
     redirect_to action: "test"
@@ -130,7 +139,7 @@ class CryptoController < ApplicationController
   end
 
   def make_prediction(fann, metrics, i, price_data)
-    input = create_input_set_for_index(@price_data, i, 10, metrics)
+    input = create_input_set_for_index(@price_data, i, NUMBER_OF_INPUTS, metrics)
     output = fann.run(input)
     scaled_output = CryptoCommon.transform_output(output, metrics)
 
@@ -153,13 +162,13 @@ class CryptoController < ApplicationController
     number_to_process = @train_config.price.to_i 
     end_index = start_index + number_to_process - 1
 
-    testrun_id = rand(10000)
+    testrun_id = rand(99999)
     puts "Start testing at #{start_index}, run id #{testrun_id}"
 
     debug = false
     (start_index..end_index).each do |i|
       predicted_price = make_prediction(fann, metrics, i, @price_data)
-      actual_price_data = @price_data[i + 10]
+      actual_price_data = @price_data[i + NUMBER_OF_INPUTS]
       actual_price = actual_price_data.price  
 
       if debug
@@ -195,8 +204,8 @@ class CryptoController < ApplicationController
     price_data_array = []
     index = 0
     
-    lowest_delta_value = 100000
-    highest_delta_value = -100000
+    lowest_delta_value = 900000
+    highest_delta_value = -900000
     
     data = CryptoData.all 
     data.each do |crypto_data|
@@ -224,9 +233,9 @@ class CryptoController < ApplicationController
     # If the metrics already exist, use those
     # otherwise, writ them here
     price_pct_metrics = nil
-    if File.exists? "./storage/context_metrics.txt"
+    if File.exists? METRICS_FILE_NAME
       # load the metrics
-      persisted_metrics = File.read("./storage/context_metrics.txt")
+      persisted_metrics = File.read(METRICS_FILE_NAME)
       price_pct_metrics = YAML::load(persisted_metrics)
       puts "Loaded metrics from file"
       puts price_pct_metrics.to_display
@@ -249,7 +258,7 @@ class CryptoController < ApplicationController
 
       str = YAML::dump(price_pct_metrics)
       puts "Yaml: #{str}"
-      open("./storage/context_metrics.txt", 'w') { |f|
+      open(METRICS_FILE_NAME, 'w') { |f|
         f.puts str
       }
     end
@@ -296,8 +305,8 @@ class CryptoController < ApplicationController
   end
 
   def load_the_model
-    fann = RubyFann::Standard.new(:filename => "./storage/btc.net")
-    persisted_metrics = File.read("./storage/context_metrics.txt")
+    fann = RubyFann::Standard.new(:filename => NETWORK_FILENAME)
+    persisted_metrics = File.read(METRICS_FILE_NAME)
     metrics = YAML::load(persisted_metrics)
     [fann, metrics]
   end
@@ -309,8 +318,7 @@ class CryptoController < ApplicationController
     @price_data = get_price_data_from_database
 
     end_index = @price_data.last.index
-    # indexes are inclusive, so subtract 9 to get a range of 10
-    start_index = end_index - 9
+    start_index = end_index - NUMBER_OF_INPUTS - 1
     @last_day = @price_data.last.day
     @prediction_day = Date.parse(@last_day) + 1
 

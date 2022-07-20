@@ -1,3 +1,6 @@
+require 'sidekiq/web'
+require 'sidekiq-scheduler/web'
+
 Rails.application.routes.draw do
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
@@ -17,4 +20,7 @@ Rails.application.routes.draw do
   post "/crypto/testrun", to: "crypto#testrun"
   get "/crypto/testresult", to: "crypto#testresult"
   get "/crypto/deleteruns", to: "crypto#deleteruns"
+  get "/crypto/priceupdate", to: "crypto#priceupdate"
+
+  mount Sidekiq::Web => '/sidekiq'
 end
