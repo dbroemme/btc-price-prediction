@@ -1,4 +1,5 @@
 require 'crypto_common'
+require 'json'
 
 NUMBER_OF_INPUTS = 10
 HIDDEN_LAYERS = [32]
@@ -119,6 +120,7 @@ class CryptoController < ApplicationController
 
   def create_input_set_for_index(price_data_array, index, n, metrics)
     input = []
+    puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
     price_data_array[index..index+n-1].each do |pd|
       input << pd.price_delta_pct
     end
@@ -139,7 +141,7 @@ class CryptoController < ApplicationController
   end
 
   def make_prediction(fann, metrics, i, price_data)
-    input = create_input_set_for_index(@price_data, i, NUMBER_OF_INPUTS, metrics)
+    input = create_input_set_for_index(price_data, i, NUMBER_OF_INPUTS, metrics)
     output = fann.run(input)
     scaled_output = CryptoCommon.transform_output(output, metrics)
 
@@ -335,4 +337,25 @@ class CryptoController < ApplicationController
     @current_time = Time.now.utc 
     @current_btc_price = CryptoCommon::get_current_btc_in_usc
   end
+
+  def predict_api
+    puts "In crypto controller predict api"
+
+    fann, metrics = load_the_model 
+    price_data = get_price_data_from_database
+
+    end_index = price_data.last.index
+    start_index = end_index - NUMBER_OF_INPUTS - 1
+    last_day = price_data.last.day
+    prediction_day = Date.parse(last_day) + 1
+
+    puts "Indexes start-end #{start_index} - #{end_index}"
+    puts "Day last #{last_day}  prediction #{prediction_day}"
+    puts "Price data size: #{price_data.size}"
+
+    predicted_price = make_prediction(fann, metrics, start_index, price_data)
+    output = PricePredictionApiOutput.new(prediction_day, predicted_price)
+    render :json => output
+  end
+
 end

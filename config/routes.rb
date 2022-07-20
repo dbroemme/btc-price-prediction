@@ -11,6 +11,8 @@ Rails.application.routes.draw do
   get "/crypto/view", to: "crypto#view"
   get "/crypto/baseline", to: "crypto#baseline"
 
+  get "/crypto/predict_api", to: "crypto#predict_api"
+
   get "/crypto/enterdata", to: "crypto#enterdata"
   post "/crypto/savedata", to: "crypto#savedata"
 

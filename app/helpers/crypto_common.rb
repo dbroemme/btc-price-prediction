@@ -69,6 +69,15 @@ module CryptoCommon
     end
   end
 
+  class PricePredictionApiOutput
+    attr_accessor :day
+    attr_accessor :price
+    def initialize(d, p)
+      @day = d 
+      @price = p 
+    end
+  end 
+
   class CryptoClosingPrice
     attr_accessor :index
     attr_accessor :day
