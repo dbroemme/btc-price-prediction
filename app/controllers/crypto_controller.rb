@@ -13,7 +13,8 @@ class CryptoController < ApplicationController
   def get_model_config
     #TenDayPricePredict.new
     #TwentyDayPricePredict.new
-    SevenDayPricePredict.new
+    #SevenDayPricePredict.new
+    SevenDayVolumePredict.new
   end 
 
   def setup
@@ -104,7 +105,7 @@ class CryptoController < ApplicationController
     (0..training_index_cutoff).each do |train_index|
       input = model_config.create_input_set_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
       desired_output = model_config.get_desired_output_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
-      #puts "Input:  #{input}  ->  #{desired_output}"
+      puts "Input:  #{input}  ->  #{desired_output}"
       @input_array << input 
       @desired_output_array << [desired_output]
     end
@@ -165,7 +166,7 @@ class CryptoController < ApplicationController
     debug = false
     (start_index..end_index).each do |i|
       predicted_price = make_prediction(fann, metrics, i, @price_data, model_config.number_of_inputs)
-      actual_price_data = @price_data[i + model_config.number_of_inputs]
+      actual_price_data = model_config.get_actual_price_data(i, model_config.number_of_inputs, @price_data)
       actual_price = actual_price_data.price  
 
       if debug

@@ -112,7 +112,38 @@ module CryptoCommon
       #puts "Delta: #{delta}  Pct: #{delta_pct}"
       scale_with_metrics(delta_pct, metrics)
     end   
+
+    def scale_volume_in(val)
+      val.to_f / 300000000000.to_f
+    end 
+
+    def get_actual_price_data(i, n, price_data_array)
+      price_data_array[i + n]
+    end
   end 
+
+  class SevenDayVolumePredict < BasePredict
+    attr_accessor :number_of_inputs 
+    attr_accessor :hidden_layers 
+    attr_accessor :network_filename
+
+    def initialize
+      @number_of_inputs = 7
+      @hidden_layers = [12] 
+      @network_filename = "./storage/btc_seven_volume.net"
+    end
+
+    def create_input_set_for_index(price_data_array, index, n, metrics)
+      input = []
+      #puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
+      price_data_array[index+1..index+n-1].each do |pd|
+        input << pd.price_delta_pct
+      end
+      scaled_array = scale_array(input, metrics)
+      scaled_array << scale_volume_in(price_data_array[index+n-1].volume)
+      scaled_array
+    end
+  end
 
   class SevenDayPricePredict < BasePredict
     attr_accessor :number_of_inputs 
