@@ -102,8 +102,8 @@ class CryptoController < ApplicationController
     @desired_output_array = []
 
     (0..training_index_cutoff).each do |train_index|
-      input = create_input_set_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
-      desired_output = get_desired_output_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
+      input = model_config.create_input_set_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
+      desired_output = model_config.get_desired_output_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
       #puts "Input:  #{input}  ->  #{desired_output}"
       @input_array << input 
       @desired_output_array << [desired_output]
@@ -124,22 +124,6 @@ class CryptoController < ApplicationController
     redirect_to action: "test"
   end 
 
-  def create_input_set_for_index(price_data_array, index, n, metrics)
-    input = []
-    #puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
-    price_data_array[index..index+n-1].each do |pd|
-      input << pd.price_delta_pct
-    end
-    get_model_config.scale_array(input, metrics)
-  end 
-    
-  def get_desired_output_for_index(price_data_array, index, n, metrics)
-    delta = price_data_array[index + n].price - price_data_array[index + n - 1].price 
-    delta_pct = delta.to_f / price_data_array[index + n].price
-    #puts "Delta: #{delta}  Pct: #{delta_pct}"
-    get_model_config.scale_with_metrics(delta_pct, metrics)
-  end 
-
   def test
     @train_config = CryptoData.new
     @train_config.volume = 2501
@@ -149,7 +133,7 @@ class CryptoController < ApplicationController
   def make_prediction(fann, metrics, i, price_data, n)
     model_config = get_model_config
 
-    input = create_input_set_for_index(price_data, i, model_config.number_of_inputs, metrics)
+    input = model_config.create_input_set_for_index(price_data, i, model_config.number_of_inputs, metrics)
     output = fann.run(input)
     scaled_output = model_config.transform_output(output, metrics)
 

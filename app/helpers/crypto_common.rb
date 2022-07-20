@@ -96,6 +96,22 @@ module CryptoCommon
       point_in_range = metrics.range * value
       metrics.min + point_in_range
     end
+
+    def create_input_set_for_index(price_data_array, index, n, metrics)
+      input = []
+      #puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
+      price_data_array[index..index+n-1].each do |pd|
+        input << pd.price_delta_pct
+      end
+      scale_array(input, metrics)
+    end 
+      
+    def get_desired_output_for_index(price_data_array, index, n, metrics)
+      delta = price_data_array[index + n].price - price_data_array[index + n - 1].price 
+      delta_pct = delta.to_f / price_data_array[index + n].price
+      #puts "Delta: #{delta}  Pct: #{delta_pct}"
+      scale_with_metrics(delta_pct, metrics)
+    end   
   end 
 
   class SevenDayPricePredict < BasePredict
