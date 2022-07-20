@@ -75,6 +75,11 @@ module CryptoCommon
   end 
 
   class BasePredict 
+    attr_accessor :number_of_inputs 
+    attr_accessor :number_of_days 
+    attr_accessor :hidden_layers 
+    attr_accessor :network_filename
+
     def scale_array(array, metrics)
       output = [] 
       array.each do |val|
@@ -97,18 +102,18 @@ module CryptoCommon
       metrics.min + point_in_range
     end
 
-    def create_input_set_for_index(price_data_array, index, n, metrics)
+    def create_input_set_for_index(price_data_array, index, metrics)
       input = []
       #puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
-      price_data_array[index..index+n-1].each do |pd|
+      price_data_array[index..index+@number_of_days-1].each do |pd|
         input << pd.price_delta_pct
       end
       scale_array(input, metrics)
     end 
       
-    def get_desired_output_for_index(price_data_array, index, n, metrics)
-      delta = price_data_array[index + n].price - price_data_array[index + n - 1].price 
-      delta_pct = delta.to_f / price_data_array[index + n].price
+    def get_desired_output_for_index(price_data_array, index, metrics)
+      delta = price_data_array[index + @number_of_days].price - price_data_array[index + @number_of_days - 1].price 
+      delta_pct = delta.to_f / price_data_array[index + @number_of_days].price
       #puts "Delta: #{delta}  Pct: #{delta_pct}"
       scale_with_metrics(delta_pct, metrics)
     end   
@@ -117,80 +122,64 @@ module CryptoCommon
       val.to_f / 300000000000.to_f
     end 
 
-    def get_actual_price_data(i, n, price_data_array)
-      price_data_array[i + n]
+    def get_actual_price_data(i, price_data_array)
+      price_data_array[i + @number_of_days]
     end
   end 
 
   class SevenDayVolumePredict < BasePredict
-    attr_accessor :number_of_inputs 
-    attr_accessor :hidden_layers 
-    attr_accessor :network_filename
-
     def initialize
       @number_of_inputs = 7
+      @number_of_days = 6
       @hidden_layers = [12] 
       @network_filename = "./storage/btc_seven_volume.net"
     end
 
-    def create_input_set_for_index(price_data_array, index, n, metrics)
+    def create_input_set_for_index(price_data_array, index, metrics)
       input = []
       #puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
-      price_data_array[index+1..index+n-1].each do |pd|
+      price_data_array[index..index+@number_of_days-1].each do |pd|
         input << pd.price_delta_pct
       end
       scaled_array = scale_array(input, metrics)
-      scaled_array << scale_volume_in(price_data_array[index+n-1].volume)
+      scaled_array << scale_volume_in(price_data_array[index+@number_of_days-1].volume)
       scaled_array
     end
   end
 
   class SevenDayPricePredict < BasePredict
-    attr_accessor :number_of_inputs 
-    attr_accessor :hidden_layers 
-    attr_accessor :network_filename
-
     def initialize
       @number_of_inputs = 7
+      @number_of_days = 7
       @hidden_layers = [12] 
       @network_filename = "./storage/btc_seven.net"
     end
   end
 
   class TenDayPricePredict < BasePredict
-    attr_accessor :number_of_inputs 
-    attr_accessor :hidden_layers 
-    attr_accessor :network_filename
-
     def initialize
       @number_of_inputs = 10
+      @number_of_days = 10
       @hidden_layers = [16] 
       @network_filename = "./storage/btc_three.net"
     end
   end
 
   class TwentyDayPricePredict < BasePredict
-    attr_accessor :number_of_inputs 
-    attr_accessor :hidden_layers 
-    attr_accessor :network_filename
-
     def initialize
       @number_of_inputs = 20
+      @number_of_days = 20
       @hidden_layers = [32,16] 
       @network_filename = "./storage/btc_twenty.net"
     end
   end
 
   class ThirtyDayPricePredict < BasePredict
-    attr_accessor :number_of_inputs 
-    attr_accessor :hidden_layers 
-    attr_accessor :network_filename
-
     def initialize
       @number_of_inputs = 30
+      @number_of_days = 30
       @hidden_layers = [24,16] 
       @network_filename = "./storage/btc_thirty.net"
     end
   end
-
 end

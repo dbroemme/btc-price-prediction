@@ -23,6 +23,7 @@ Rails.application.routes.draw do
   get "/crypto/testresult", to: "crypto#testresult"
   get "/crypto/deleteruns", to: "crypto#deleteruns"
   get "/crypto/priceupdate", to: "crypto#priceupdate"
+  get "/crypto/savetofile", to: "crypto#savetofile"
 
   mount Sidekiq::Web => '/sidekiq'
 end

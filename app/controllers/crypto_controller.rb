@@ -10,11 +10,20 @@ class CryptoController < ApplicationController
     puts "In crypto controller index"
   end
 
+  def savetofile
+    prediction_data = CryptoPrediction.where("run_id = 79760")
+    open("./storage/predicted_prices.txt", 'w') { |f|
+      prediction_data.each do |pd|
+        f.puts "#{pd.day},#{pd.price}"
+      end
+    }
+  end 
+
   def get_model_config
-    #TenDayPricePredict.new
     #TwentyDayPricePredict.new
     #SevenDayPricePredict.new
-    SevenDayVolumePredict.new
+    #SevenDayVolumePredict.new
+    TenDayPricePredict.new
   end 
 
   def setup
@@ -103,8 +112,8 @@ class CryptoController < ApplicationController
     @desired_output_array = []
 
     (0..training_index_cutoff).each do |train_index|
-      input = model_config.create_input_set_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
-      desired_output = model_config.get_desired_output_for_index(@price_data, train_index, model_config.number_of_inputs, metrics)
+      input = model_config.create_input_set_for_index(@price_data, train_index, metrics)
+      desired_output = model_config.get_desired_output_for_index(@price_data, train_index, metrics)
       puts "Input:  #{input}  ->  #{desired_output}"
       @input_array << input 
       @desired_output_array << [desired_output]
@@ -131,16 +140,16 @@ class CryptoController < ApplicationController
     @train_config.price = 100
   end
 
-  def make_prediction(fann, metrics, i, price_data, n)
+  def make_prediction(fann, metrics, i, price_data)
     model_config = get_model_config
 
-    input = model_config.create_input_set_for_index(price_data, i, model_config.number_of_inputs, metrics)
+    input = model_config.create_input_set_for_index(price_data, i, metrics)
     output = fann.run(input)
     scaled_output = model_config.transform_output(output, metrics)
 
     # Convert the predicted percentage change to a daily price
     puts "make prediction  i: #{i}   size: #{price_data.size}"
-    day_before_price = price_data[i + n - 1].price
+    day_before_price = price_data[i + model_config.number_of_days - 1].price
     predicted_price = day_before_price + (scaled_output * day_before_price)
     predicted_price
   end 
@@ -165,8 +174,8 @@ class CryptoController < ApplicationController
 
     debug = false
     (start_index..end_index).each do |i|
-      predicted_price = make_prediction(fann, metrics, i, @price_data, model_config.number_of_inputs)
-      actual_price_data = model_config.get_actual_price_data(i, model_config.number_of_inputs, @price_data)
+      predicted_price = make_prediction(fann, metrics, i, @price_data)
+      actual_price_data = model_config.get_actual_price_data(i, @price_data)
       actual_price = actual_price_data.price  
 
       if debug
@@ -317,7 +326,7 @@ class CryptoController < ApplicationController
     @price_data = get_price_data_from_database
 
     end_index = @price_data.last.index
-    start_index = end_index - model_config.number_of_inputs - 1
+    start_index = end_index - model_config.number_of_days - 1
     @last_day = @price_data.last.day
     @prediction_day = Date.parse(@last_day) + 1
 
@@ -330,7 +339,7 @@ class CryptoController < ApplicationController
                                                  @price_data[index].price_delta.round)
     end
 
-    @predicted_price = make_prediction(fann, metrics, start_index, @price_data, model_config.number_of_inputs)
+    @predicted_price = make_prediction(fann, metrics, start_index, @price_data)
     @current_time = Time.now.utc 
     @current_btc_price = CryptoCommon::get_current_btc_in_usc
   end
@@ -342,7 +351,7 @@ class CryptoController < ApplicationController
     price_data = get_price_data_from_database
 
     end_index = price_data.last.index
-    start_index = end_index - model_config.number_of_inputs - 1
+    start_index = end_index - model_config.number_of_days - 1
     last_day = price_data.last.day
     prediction_day = Date.parse(last_day) + 1
 
@@ -350,7 +359,7 @@ class CryptoController < ApplicationController
     puts "Day last #{last_day}  prediction #{prediction_day}"
     puts "Price data size: #{price_data.size}"
 
-    predicted_price = make_prediction(fann, metrics, start_index, price_data, model_config.number_of_inputs)
+    predicted_price = make_prediction(fann, metrics, start_index, price_data)
     output = PricePredictionApiOutput.new(prediction_day, predicted_price)
     render :json => output
   end
