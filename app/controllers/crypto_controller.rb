@@ -2,8 +2,8 @@ require 'crypto_common'
 require 'json'
 
 NUMBER_OF_INPUTS = 10
-HIDDEN_LAYERS = [32]
-NETWORK_FILENAME = "./storage/btc.net"
+HIDDEN_LAYERS = [64, 32, 24]
+NETWORK_FILENAME = "./storage/btc_three_layers.net"
 METRICS_FILE_NAME = "./storage/context_metrics.txt"
 
 class CryptoController < ApplicationController

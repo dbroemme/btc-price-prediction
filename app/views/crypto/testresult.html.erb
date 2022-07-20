@@ -17,7 +17,7 @@
   prediction_data = CryptoPrediction.where("run_id = #{testrun_id}")
 
   prediction_data.each do |data|
-    total_error_pct = total_error_pct + data.error_pct
+    total_error_pct = total_error_pct + data.error_pct.abs
   end
 %>
 <%
