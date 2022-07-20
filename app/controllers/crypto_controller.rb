@@ -130,14 +130,14 @@ class CryptoController < ApplicationController
     price_data_array[index..index+n-1].each do |pd|
       input << pd.price_delta_pct
     end
-    CryptoCommon::scale_array(input, metrics)
+    get_model_config.scale_array(input, metrics)
   end 
     
   def get_desired_output_for_index(price_data_array, index, n, metrics)
     delta = price_data_array[index + n].price - price_data_array[index + n - 1].price 
     delta_pct = delta.to_f / price_data_array[index + n].price
     #puts "Delta: #{delta}  Pct: #{delta_pct}"
-    CryptoCommon::scale_with_metrics(delta_pct, metrics)
+    get_model_config.scale_with_metrics(delta_pct, metrics)
   end 
 
   def test
@@ -146,15 +146,16 @@ class CryptoController < ApplicationController
     @train_config.price = 100
   end
 
-  def make_prediction(fann, metrics, i, price_data)
+  def make_prediction(fann, metrics, i, price_data, n)
     model_config = get_model_config
 
     input = create_input_set_for_index(price_data, i, model_config.number_of_inputs, metrics)
     output = fann.run(input)
-    scaled_output = CryptoCommon.transform_output(output, metrics)
+    scaled_output = model_config.transform_output(output, metrics)
 
     # Convert the predicted percentage change to a daily price
-    day_before_price = price_data[i + 9].price
+    puts "make prediction  i: #{i}   size: #{price_data.size}"
+    day_before_price = price_data[i + n - 1].price
     predicted_price = day_before_price + (scaled_output * day_before_price)
     predicted_price
   end 
@@ -179,7 +180,7 @@ class CryptoController < ApplicationController
 
     debug = false
     (start_index..end_index).each do |i|
-      predicted_price = make_prediction(fann, metrics, i, @price_data)
+      predicted_price = make_prediction(fann, metrics, i, @price_data, model_config.number_of_inputs)
       actual_price_data = @price_data[i + model_config.number_of_inputs]
       actual_price = actual_price_data.price  
 
@@ -276,7 +277,7 @@ class CryptoController < ApplicationController
     end
 
     price_data_array.each do |pd|
-      pd.price_delta_scaled = CryptoCommon::scale_with_metrics(pd.price_delta_pct, price_pct_metrics)
+      pd.price_delta_scaled = get_model_config.scale_with_metrics(pd.price_delta_pct, price_pct_metrics)
     end
 
     price_data_array
@@ -344,7 +345,7 @@ class CryptoController < ApplicationController
                                                  @price_data[index].price_delta.round)
     end
 
-    @predicted_price = make_prediction(fann, metrics, start_index, @price_data)
+    @predicted_price = make_prediction(fann, metrics, start_index, @price_data, model_config.number_of_inputs)
     @current_time = Time.now.utc 
     @current_btc_price = CryptoCommon::get_current_btc_in_usc
   end
@@ -364,7 +365,7 @@ class CryptoController < ApplicationController
     puts "Day last #{last_day}  prediction #{prediction_day}"
     puts "Price data size: #{price_data.size}"
 
-    predicted_price = make_prediction(fann, metrics, start_index, price_data)
+    predicted_price = make_prediction(fann, metrics, start_index, price_data, model_config.number_of_inputs)
     output = PricePredictionApiOutput.new(prediction_day, predicted_price)
     render :json => output
   end

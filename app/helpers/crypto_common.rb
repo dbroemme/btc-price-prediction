@@ -18,29 +18,6 @@ module CryptoCommon
     str[0, length].rjust(length, ' ')
   end
 
-  def CryptoCommon.scale_with_metrics(val, metrics)
-    val_from_bottom = val - metrics.min 
-    val_from_bottom.to_f / metrics.range.to_f
-  end 
-
-  # This will scale from zero to one
-  def CryptoCommon.scale_array(array, metrics)
-    output = [] 
-    array.each do |val|
-      output << CryptoCommon::scale_with_metrics(val, metrics)
-    end 
-    output 
-  end
-
-  def CryptoCommon.scale_out_with_metrics(value, metrics)
-    point_in_range = metrics.range * value
-    metrics.min + point_in_range
-  end
-
-  def CryptoCommon.transform_output(output, metrics)
-    scale_out_with_metrics(output[0], metrics)
-  end
-
   class DataMetrics
     attr_accessor :cnt
     attr_accessor :min
@@ -97,7 +74,31 @@ module CryptoCommon
     end 
   end 
 
-  class SevenDayPricePredict 
+  class BasePredict 
+    def scale_array(array, metrics)
+      output = [] 
+      array.each do |val|
+        output << scale_with_metrics(val, metrics)
+      end 
+      output 
+    end
+
+    def transform_output(output, metrics)
+      scale_out_with_metrics(output[0], metrics)
+    end  
+
+    def scale_with_metrics(val, metrics)
+      val_from_bottom = val - metrics.min 
+      val_from_bottom.to_f / metrics.range.to_f
+    end 
+  
+    def scale_out_with_metrics(value, metrics)
+      point_in_range = metrics.range * value
+      metrics.min + point_in_range
+    end
+  end 
+
+  class SevenDayPricePredict < BasePredict
     attr_accessor :number_of_inputs 
     attr_accessor :hidden_layers 
     attr_accessor :network_filename
@@ -109,7 +110,7 @@ module CryptoCommon
     end
   end
 
-  class TenDayPricePredict 
+  class TenDayPricePredict < BasePredict
     attr_accessor :number_of_inputs 
     attr_accessor :hidden_layers 
     attr_accessor :network_filename
@@ -121,7 +122,7 @@ module CryptoCommon
     end
   end
 
-  class TwentyDayPricePredict 
+  class TwentyDayPricePredict < BasePredict
     attr_accessor :number_of_inputs 
     attr_accessor :hidden_layers 
     attr_accessor :network_filename
@@ -133,7 +134,7 @@ module CryptoCommon
     end
   end
 
-  class ThirtyDayPricePredict 
+  class ThirtyDayPricePredict < BasePredict
     attr_accessor :number_of_inputs 
     attr_accessor :hidden_layers 
     attr_accessor :network_filename
