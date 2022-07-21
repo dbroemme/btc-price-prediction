@@ -364,7 +364,7 @@ class CryptoController < ApplicationController
     puts "Price data size: #{price_data.size}"
 
     predicted_price = make_prediction(fann, metrics, start_index, price_data)
-    output = PricePredictionApiOutput.new(prediction_day, predicted_price)
+    output = PricePredictionApiOutput.new(prediction_day, predicted_price.round(5))
     render :json => output
   end
 
