@@ -119,7 +119,7 @@ module CryptoCommon
     end   
 
     def scale_volume_in(val)
-      val.to_f / 300000000000.to_f
+      val.to_f / 50000000000.to_f
     end 
 
     def get_actual_price_data(i, price_data_array)
@@ -143,6 +143,28 @@ module CryptoCommon
       end
       scaled_array = scale_array(input, metrics)
       scaled_array << scale_volume_in(price_data_array[index+@number_of_days-1].volume)
+      scaled_array
+    end
+  end
+
+  class HalfAndHalfPredict < BasePredict
+    def initialize
+      @number_of_inputs = 10
+      @number_of_days = 5
+      @hidden_layers = [12,8] 
+      @network_filename = "./storage/btc_half.net"
+    end
+
+    def create_input_set_for_index(price_data_array, index, metrics)
+      input = []
+      #puts "index: #{index} - #{index+n-1}     size: #{price_data_array.size}"
+      price_data_array[index..index+@number_of_days-1].each do |pd|
+        input << pd.price_delta_pct
+      end
+      scaled_array = scale_array(input, metrics)
+      price_data_array[index..index+@number_of_days-1].each do |pd|
+        scaled_array << scale_volume_in(pd.volume)
+      end
       scaled_array
     end
   end

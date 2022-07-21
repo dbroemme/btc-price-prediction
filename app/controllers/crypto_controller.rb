@@ -23,7 +23,8 @@ class CryptoController < ApplicationController
     #TwentyDayPricePredict.new
     #SevenDayPricePredict.new
     #SevenDayVolumePredict.new
-    TenDayPricePredict.new
+    #TenDayPricePredict.new
+    HalfAndHalfPredict.new
   end 
 
   def setup
@@ -137,7 +138,7 @@ class CryptoController < ApplicationController
   def test
     @train_config = CryptoData.new
     @train_config.volume = 2501
-    @train_config.price = 100
+    @train_config.price = 300
   end
 
   def make_prediction(fann, metrics, i, price_data)
@@ -174,6 +175,9 @@ class CryptoController < ApplicationController
 
     debug = false
     (start_index..end_index).each do |i|
+      if i + model_config.number_of_days >= @price_data.size 
+        next 
+      end
       predicted_price = make_prediction(fann, metrics, i, @price_data)
       actual_price_data = model_config.get_actual_price_data(i, @price_data)
       actual_price = actual_price_data.price  
@@ -326,7 +330,7 @@ class CryptoController < ApplicationController
     @price_data = get_price_data_from_database
 
     end_index = @price_data.last.index
-    start_index = end_index - model_config.number_of_days - 1
+    start_index = end_index - model_config.number_of_days
     @last_day = @price_data.last.day
     @prediction_day = Date.parse(@last_day) + 1
 
@@ -351,7 +355,7 @@ class CryptoController < ApplicationController
     price_data = get_price_data_from_database
 
     end_index = price_data.last.index
-    start_index = end_index - model_config.number_of_days - 1
+    start_index = end_index - model_config.number_of_days
     last_day = price_data.last.day
     prediction_day = Date.parse(last_day) + 1
 

@@ -8,6 +8,6 @@
 
 :schedule:
   PriceUpdateJob:
-    cron: '0 * * * *'
+    cron: '0/5 * * * *'
     queue: default
     enabled: true
