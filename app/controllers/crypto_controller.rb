@@ -23,8 +23,8 @@ class CryptoController < ApplicationController
     #TwentyDayPricePredict.new
     #SevenDayPricePredict.new
     #SevenDayVolumePredict.new
-    #TenDayPricePredict.new
-    HalfAndHalfPredict.new
+    TenDayPricePredict.new
+    #HalfAndHalfPredict.new
   end 
 
   def setup
@@ -350,20 +350,15 @@ class CryptoController < ApplicationController
 
   def predict_api
     puts "In crypto controller predict api"
-    model_config = get_model_config
-    fann, metrics = load_the_model 
-    price_data = get_price_data_from_database
+    predicted_price = 0.0
+    prediction_day = Date.today + 1
+    prediction_day_str = prediction_day.strftime("%Y-%m-%d")
+    predicted_price_data = CryptoPrediction.where("run_id = 100000 and day = '#{prediction_day_str}'")
+    predicted_price_data.each do |ypd|
+      puts "The predicted price data is #{ypd.day} -> #{ypd.price}"
+      predicted_price = ypd.price
+    end
 
-    end_index = price_data.last.index
-    start_index = end_index - model_config.number_of_days
-    last_day = price_data.last.day
-    prediction_day = Date.parse(last_day) + 1
-
-    puts "Indexes start-end #{start_index} - #{end_index}"
-    puts "Day last #{last_day}  prediction #{prediction_day}"
-    puts "Price data size: #{price_data.size}"
-
-    predicted_price = make_prediction(fann, metrics, start_index, price_data)
     output = PricePredictionApiOutput.new(prediction_day, predicted_price.round(5))
     render :json => output
   end
