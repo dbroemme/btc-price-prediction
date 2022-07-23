@@ -349,6 +349,32 @@ class CryptoController < ApplicationController
   end
 
   def predict_api
+    #
+    # Old, original inefficient implementation that loads the model
+    # from the database on each request
+    #
+    #puts "In crypto controller predict api"
+    #model_config = get_model_config
+    #fann, metrics = load_the_model 
+    #price_data = get_price_data_from_database
+
+    #end_index = price_data.last.index
+    #start_index = end_index - model_config.number_of_days
+    #last_day = price_data.last.day
+    #prediction_day = Date.parse(last_day) + 1
+
+    #puts "Indexes start-end #{start_index} - #{end_index}"
+    #puts "Day last #{last_day}  prediction #{prediction_day}"
+    #puts "Price data size: #{price_data.size}"
+
+    #predicted_price = make_prediction(fann, metrics, start_index, price_data)
+    #output = PricePredictionApiOutput.new(prediction_day, predicted_price)
+    #render :json => output
+    
+    #
+    # New, refactored version which uses the database
+    #
+
     puts "In crypto controller predict api"
     predicted_price = 0.0
     prediction_day = Date.today + 1
