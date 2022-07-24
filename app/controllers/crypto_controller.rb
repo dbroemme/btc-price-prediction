@@ -23,8 +23,8 @@ class CryptoController < ApplicationController
     #TwentyDayPricePredict.new
     #SevenDayPricePredict.new
     #SevenDayVolumePredict.new
-    TenDayPricePredict.new
-    #HalfAndHalfPredict.new
+    #TenDayPricePredict.new
+    HalfAndHalfPredict.new
   end 
 
   def setup
@@ -126,7 +126,7 @@ class CryptoController < ApplicationController
                                   :hidden_neurons => model_config.hidden_layers,
                                   :num_outputs => 1)
     #5100 max_epochs, 20 errors between reports and 0.001 desired MSE (mean-squared-error)
-    fann.train_on_data(train, 500, 20, 0.001)
+    fann.train_on_data(train, 100, 20, 0.001)
 
     File.delete(model_config.network_filename) if File.exist? model_config.network_filename
     fann.save(model_config.network_filename)
